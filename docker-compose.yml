@@ -1,0 +1,102 @@
+version: "3.9"
+
+services:
+  # --- Next.js Application ---
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: needlink-app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.development
+    environment:
+      - NODE_ENV=development
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - QUEUE_PROVIDER=bull
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # --- Redis (caching, queues, rate limiting) ---
+  redis:
+    image: redis:7-alpine
+    container_name: needlink-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  # --- Scheduled Worker ---
+  worker-scheduled:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: needlink-worker-scheduled
+    command: npx tsx worker-scheduled.ts
+    env_file:
+      - .env.development
+    environment:
+      - NODE_ENV=development
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - QUEUE_PROVIDER=bull
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # --- Analytics Worker ---
+  worker-analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: needlink-worker-analytics
+    command: npx tsx worker-analytics.ts
+    env_file:
+      - .env.development
+    environment:
+      - NODE_ENV=development
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - QUEUE_PROVIDER=bull
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # --- Notification Worker ---
+  worker-notification:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: needlink-worker-notification
+    command: npx tsx worker-notification.ts
+    env_file:
+      - .env.development
+    environment:
+      - NODE_ENV=development
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - QUEUE_PROVIDER=bull
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+volumes:
+  redis-data:
