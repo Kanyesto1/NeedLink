@@ -2,8 +2,18 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getServerSupabase } from "@/lib/supabase"
 import { getCurrentUser, isAdmin } from "@/lib/auth"
+import AnalyticsCharts from "@/components/analytics/AnalyticsCharts"
 
 export const dynamic = "force-dynamic"
+
+function groupBy<T>(rows: T[], key: keyof T, fallback: string): Array<{ key: string; count: number }> {
+  const map = new Map<string, number>()
+  rows.forEach((r) => {
+    const k = String(r[key] ?? fallback)
+    map.set(k, (map.get(k) ?? 0) + 1)
+  })
+  return Array.from(map.entries()).map(([name, count]) => ({ key: name, count }))
+}
 
 export default async function AdminDashboardPage() {
   const user = await getCurrentUser()
@@ -14,19 +24,37 @@ export default async function AdminDashboardPage() {
 
   const supabase = await getServerSupabase()
 
-  const [{ count: totalUsers }, { count: buyers }, { count: suppliers }, { count: requests }] =
-    await Promise.all([
-      supabase.from("users").select("id", { count: "exact", head: true }),
-      supabase
-        .from("user_roles")
-        .select("id", { count: "exact", head: true })
-        .eq("role", "buyer"),
-      supabase
-        .from("user_roles")
-        .select("id", { count: "exact", head: true })
-        .eq("role", "supplier"),
-      supabase.from("procurement_requests").select("id", { count: "exact", head: true }),
-    ])
+  const [
+    { count: totalUsers },
+    { count: buyers },
+    { count: suppliers },
+    { count: requests },
+    { data: requestRows },
+    { data: quotationRows },
+    { data: userRows },
+  ] = await Promise.all([
+    supabase.from("users").select("id", { count: "exact", head: true }),
+    supabase
+      .from("user_roles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "buyer"),
+    supabase
+      .from("user_roles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "supplier"),
+    supabase.from("procurement_requests").select("id", { count: "exact", head: true }),
+    supabase.from("procurement_requests").select("status"),
+    supabase.from("quotations").select("status"),
+    supabase.from("users").select("status"),
+  ])
+
+  const analytics = {
+    summary: {
+      requestsByStatus: groupBy(requestRows ?? [], "status", "unknown"),
+      quotationsByStatus: groupBy(quotationRows ?? [], "status", "unknown"),
+      usersByStatus: groupBy(userRows ?? [], "status", "unknown"),
+    },
+  }
 
   return (
     <div>
@@ -71,6 +99,9 @@ export default async function AdminDashboardPage() {
           </p>
         </Link>
       </div>
+
+      <h3 className="mb-4 mt-8 text-lg font-semibold">Analytics</h3>
+      <AnalyticsCharts data={analytics} />
     </div>
   )
 }

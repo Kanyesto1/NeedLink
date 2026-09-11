@@ -2,6 +2,10 @@ import { z } from "zod"
 import { supabase } from "@/lib/supabase"
 import { ok, fail } from "@/lib/api"
 import { getCurrentUser, isAdmin } from "@/lib/auth"
+import {
+  notifySupplierQuotationAccepted,
+  notifySupplierQuotationRejected,
+} from "@/services/notification/service"
 
 const updateSchema = z.object({
   status: z.enum(["accepted", "rejected", "withdrawn"]),
@@ -31,7 +35,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
   const { data: procurement } = await supabase
     .from("procurement_requests")
-    .select("id, buyer_id, status")
+    .select("id, buyer_id, title, status")
     .eq("id", quotation.procurement_id)
     .maybeSingle()
 
@@ -66,6 +70,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       .eq("id", id)
       .single()
 
+    void notifySupplier(procurement.title, quotation.supplier_id, "accepted", updated?.price ?? 0, updated?.currency ?? "USD")
+
     return ok({ quotation: updated })
   }
 
@@ -78,5 +84,41 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
   if (error) return fail("DATABASE_ERROR", error.message, 500)
 
+  if (status === "rejected") {
+    void notifySupplier(procurement.title, quotation.supplier_id, "rejected")
+  }
+
   return ok({ quotation: data })
+}
+
+async function notifySupplier(
+  requestTitle: string,
+  supplierId: string,
+  outcome: "accepted" | "rejected",
+  price = 0,
+  currency = "USD",
+) {
+  const { data: supplier } = await supabase
+    .from("users")
+    .select("email, full_name")
+    .eq("id", supplierId)
+    .maybeSingle()
+
+  if (!supplier) return
+
+  if (outcome === "accepted") {
+    await notifySupplierQuotationAccepted({
+      supplierEmail: supplier.email,
+      supplierName: supplier.full_name,
+      requestTitle,
+      price,
+      currency,
+    })
+  } else {
+    await notifySupplierQuotationRejected({
+      supplierEmail: supplier.email,
+      supplierName: supplier.full_name,
+      requestTitle,
+    })
+  }
 }

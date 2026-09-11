@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://your-project-id.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npx eslint . --max-warnings=100
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Validation scripts
+        run: |
+          node scripts/architecture-validate.js
+          node scripts/domain-validate.js
+          node scripts/db-validate.js
+          node scripts/auth-validate.js
+          node scripts/validate-rls.js
+          node scripts/check-deprecated-roles.js
+          node scripts/verify-security-headers.js
+          node scripts/security-audit.js
+          node scripts/validate-operational.js
+          node scripts/validate-business.js
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify build output
+        run: node scripts/build-verify.js

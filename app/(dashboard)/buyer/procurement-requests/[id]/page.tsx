@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import DownloadPdfButton from "@/components/export/DownloadPdfButton"
 
 interface ProcurementRequest {
   id: string
@@ -110,11 +111,14 @@ export default function BuyerRequestDetailPage({
       </Link>
 
       <div className="mb-6">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4">
           <h2 className="text-2xl font-bold">{request.title}</h2>
-          <span className="rounded-full bg-success/10 px-3 py-1 text-xs font-medium text-success">
-            {request.status.replace("_", " ")}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <DownloadPdfButton request={request} quotations={quotations} />
+            <span className="rounded-full bg-success/10 px-3 py-1 text-xs font-medium text-success">
+              {request.status.replace("_", " ")}
+            </span>
+          </div>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
           {request.categories?.name ?? "Uncategorized"} · {request.quantity} {request.unit ?? ""} · Due{" "}

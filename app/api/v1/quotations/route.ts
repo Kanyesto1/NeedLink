@@ -2,6 +2,7 @@ import { z } from "zod"
 import { supabase } from "@/lib/supabase"
 import { ok, fail } from "@/lib/api"
 import { getCurrentUser, isBuyer, isSupplier } from "@/lib/auth"
+import { notifyBuyerOfNewQuotation } from "@/services/notification/service"
 
 const createSchema = z.object({
   procurement_id: z.string().uuid(),
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
 
   const { data: procurement, error: prError } = await supabase
     .from("procurement_requests")
-    .select("id, buyer_id, status")
+    .select("id, buyer_id, title, status")
     .eq("id", procurement_id)
     .maybeSingle()
 
@@ -97,6 +98,26 @@ export async function POST(request: Request) {
     }
     return fail("DATABASE_ERROR", error.message, 500)
   }
+
+  void (async () => {
+    const { data: buyer } = await supabase
+      .from("users")
+      .select("email, full_name")
+      .eq("id", data.procurement.buyer_id)
+      .maybeSingle()
+
+    if (buyer) {
+      await notifyBuyerOfNewQuotation({
+        buyerEmail: buyer.email,
+        buyerName: buyer.full_name,
+        requestTitle: data.procurement.title,
+        supplierName: user.full_name,
+        price,
+        currency,
+        requestId: procurement_id,
+      })
+    }
+  })()
 
   return ok({ quotation: data }, 201)
 }
