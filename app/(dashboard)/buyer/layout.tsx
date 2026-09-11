@@ -1,3 +1,6 @@
+import Link from "next/link"
+import LogoutButton from "@/components/auth/LogoutButton"
+
 export default function BuyerLayout({
   children,
 }: {
@@ -7,9 +10,20 @@ export default function BuyerLayout({
     <div className="min-h-screen">
       <header className="border-b border-border">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <h1 className="text-lg font-bold">NeedLink — Buyer</h1>
+          <Link href="/buyer" className="text-lg font-bold">
+            NeedLink — Buyer
+          </Link>
           <nav className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">Dashboard</span>
+            <Link href="/buyer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Dashboard
+            </Link>
+            <Link
+              href="/buyer/procurement-requests/new"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              New Request
+            </Link>
+            <LogoutButton />
           </nav>
         </div>
       </header>

@@ -1,3 +1,6 @@
+import Link from "next/link"
+import LogoutButton from "@/components/auth/LogoutButton"
+
 export default function AdminLayout({
   children,
 }: {
@@ -7,9 +10,17 @@ export default function AdminLayout({
     <div className="min-h-screen">
       <header className="border-b border-border">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <h1 className="text-lg font-bold">NeedLink — Admin</h1>
+          <Link href="/admin" className="text-lg font-bold">
+            NeedLink — Admin
+          </Link>
           <nav className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">Dashboard</span>
+            <Link href="/admin/users" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Users
+            </Link>
+            <Link href="/admin/categories" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Categories
+            </Link>
+            <LogoutButton />
           </nav>
         </div>
       </header>
